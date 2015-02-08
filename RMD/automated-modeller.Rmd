@@ -1,0 +1,138 @@
+---
+title: "Automatic Model - Iris"
+author: "Chapman Siu"
+date: "Thursday, February 05, 2015"
+output: html_document
+---
+
+This is my attempt at building an automatic classifier. I intend on using this with triage process in fraud since I have not completely seen the model, and waiting for access. With the sample data set of 20 observations, and also with the data dictionary inexplicable down, there was little I could do besides preparing for access and setting up potential models and approaches to automate the triage process:
+
+```{r, echo=FALSE, message=FALSE}
+library(magrittr)
+library(dplyr)
+library(caret)
+# if used in another setting it would look like this:
+
+automatic.classify <- function(data, response, outdir=".", ...){
+  data_summary = summary(data)
+  #' DO STUFF:-output summary results
+  
+  # sample  
+  get_samples <- stratify(data, response)
+  
+  models <- train_caret(get_samples$train, response)
+  #' DO STUFF: output summary of the models and the parameters trained and searched
+  #' make sure you output the graphs
+  
+  confusion <- confusion_matrix(models, data, response, ...)
+  #' DO STUFF: plot the confusion matrix
+  #' make sure you plot the graphs as needed
+  
+  return(models)
+}
+
+```
+
+
+
+```{r, echo=FALSE, message=FALSE}
+stratify <- function(data, response, frac=.5, seed=10, ...) {
+  set.seed(seed)
+  if(class(data[, response])=="factor"){
+    by_data <- data %>% group_by_(response)
+    train <- sample_frac(by_data, frac)
+    test <- data[-as.numeric(rownames(train)),]
+  } else {
+    train <- sample_frac(data, frac)
+    test <- data[-as.numeric(rownames(train)),]
+  }
+  return(list(train=train, test=test))
+}
+
+train_caret <- function(train, response, methods=c("rpart", "nnet", "svmRadial", "gam")) {
+  control <- trainControl(method="repeatedcv", number=5, repeats=1,
+                          index=createFolds(train[,response]))
+  models <- Map(function(method) {
+    model <- tryCatch(
+          train(as.formula(paste(response, "~ .")), data=train, method=method, trControl=control),
+          error=function(e) NULL)
+    return(model)
+  }, methods)
+  
+  return(models)
+}
+
+confusion_matrix <- function(test, response, models) {
+  return(Map(function(model){
+    fit_test <- predict(model, newdata=test[,!(names(iris) == response)])
+    cm <- confuctionMatrix(fit_test, test[,(names(iris) == response)])
+  }, models))
+}
+```
+
+# Abstract
+
+This is an automatic report for the
+
+```{r}
+data(iris)
+response <- "Species"
+```
+
+```{r, echo=FALSE, message=FALSE}
+get_samples <- stratify(iris, response)
+
+# test on full set first...
+get_samples <- list(train=iris, test=iris)
+```
+
+data set. This approach in automated classification involves heavy use of the `caret` library with cross validation on half of the data to determine the optimal classifier. The optimal model of each class is chosen via `caret::train` which in turn is compared against other models. We shall choose the model with the best performance against our hold-out sample.
+
+# 1 Brief description of the data set
+
+To conﬁrm that I have interpreted the data correctly a short summary of the data set follows. The target of the classification is:
+
+```{r, echo=FALSE}
+response
+```
+
+The dimensions of the data set are:
+
+```{r, echo=FALSE}
+dim(iris)
+```
+
+A summary of these variables is given below:
+
+```{r, echo=FALSE}
+summary(iris)
+```
+
+# Summary of the model construction
+
+I have compared a number of different model classes. The performance in the cross validation scheme is shown below:
+
+```{r, echo=FALSE, message=FALSE, echo=FALSE, results='hide', warning=FALSE}
+models <- train_caret(get_samples$train, response)
+```
+```{r, echo=FALSE, message=FALSE, echo=FALSE}
+Map(function(model) {
+  tryCatch(plot(model), error = function(e) NULL)
+}, models)
+```
+
+# 3 Model Description
+
+In this section I have described the model I have constructed to explain the data. A quick summary is below, followed by the plots of the estimated Accuracy and Kappa coefficient for all the models.
+
+```{r}
+bwplot(resamples(models))
+```
+
+INSERT VARIOUS CONDITIONS FOR SPECIFIC MODELS?
+
+# 4 Model Criticism
+
+In this section I have attempted to falsify the model I presented above to understand what aspects of the data it is not capturing well. 
+
+INSERT SOMETHING GENERIC
