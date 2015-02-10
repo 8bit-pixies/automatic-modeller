@@ -31,7 +31,7 @@ train_caret <- function(train, response, methods=c("rpart", "nnet", "svmRadial",
 confusion_matrix <- function(test, response, models) {
   return(Map(function(model){
     fit_test <- predict(model, newdata=test[,!(names(iris) == response)])
-    cm <- confuctionMatrix(fit_test, test[,(names(iris) == response)])
+    cm <- confusionMatrix(fit_test, test[,(names(iris) == response)])
   }, models))
 }
 
